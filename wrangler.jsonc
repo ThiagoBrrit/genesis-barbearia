@@ -1,0 +1,12 @@
+{
+  // Configuração de publicação na Cloudflare (não precisa mexer).
+  // O nome deve ser igual ao nome do projeto criado na Cloudflare.
+  "name": "genesis-barbearia",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    // Pasta gerada pelo "npm run build"
+    "directory": "./dist",
+    // Faz /admin, /filas, /marcar abrirem direto (site de página única)
+    "not_found_handling": "single-page-application"
+  }
+}
