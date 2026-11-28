@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useFila } from '@/hooks/useFila';
-import { clientesDo } from '@/lib/queue';
+import { clientesDo, filaAberta } from '@/lib/queue';
 import { textoPessoasNaFila } from '@/lib/format';
 
 export default function QueuePage() {
@@ -25,14 +25,22 @@ export default function QueuePage() {
       <section className="grid gap-5 md:grid-cols-3">
         {barbeiros.map((barbeiro) => {
           const fila = clientesDo(clientes, barbeiro.id);
+          const aberta = filaAberta(barbeiro);
           return (
             <article key={barbeiro.id} className="rounded-2xl border border-ink-line bg-ink-soft p-6">
               <div className="flex items-baseline justify-between gap-3 border-b border-ink-line pb-4">
                 <h2 className="font-display text-xl text-white">{barbeiro.nome}</h2>
-                <span className="text-sm text-gold">{textoPessoasNaFila(fila.length)}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-sm text-gold">{textoPessoasNaFila(fila.length)}</span>
+                  <span className={`text-xs font-medium ${aberta ? 'text-emerald-400' : 'text-white/40'}`}>
+                    {aberta ? 'Fila aberta' : 'Fila fechada'}
+                  </span>
+                </div>
               </div>
               {fila.length === 0 ? (
-                <p className="py-6 text-center text-sm text-white/40">Sem ninguém na fila</p>
+                <p className="py-6 text-center text-sm text-white/40">
+                  {aberta ? 'Sem ninguém na fila' : 'Fila fechada no momento'}
+                </p>
               ) : (
                 <ol className="mt-4 space-y-3">
                   {fila.map((cliente) => (

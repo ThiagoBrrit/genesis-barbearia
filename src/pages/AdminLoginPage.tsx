@@ -1,32 +1,34 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Lock, User } from 'lucide-react';
-import { ADMIN_PASSWORD, ADMIN_USER } from '@/config';
-import { useFila } from '@/hooks/useFila';
+import { loginBarbeiro } from '@/lib/queue';
 import { lerSessao, salvarSessao } from '@/lib/sessaoBarbeiro';
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();
-  const { barbeiros, status } = useFila();
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
-  const [barbeiroId, setBarbeiroId] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
   if (lerSessao() !== null) return <Navigate to="/admin/painel" replace />;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (usuario.trim() !== ADMIN_USER || senha !== ADMIN_PASSWORD) {
-      setErro('Usuário ou senha incorretos.');
+    if (usuario.trim() === '' || senha === '') {
+      setErro('Digite seu usuário e sua senha.');
       return;
     }
-    if (barbeiroId === null) {
-      setErro('Escolha qual barbeiro é você.');
-      return;
+    setErro(null);
+    setEnviando(true);
+    try {
+      const sessao = await loginBarbeiro(usuario, senha);
+      salvarSessao(sessao);
+      navigate('/admin/painel', { replace: true });
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : 'Erro inesperado. Tente novamente.');
+      setEnviando(false);
     }
-    salvarSessao(barbeiroId);
-    navigate('/admin/painel', { replace: true });
   };
 
   const campoClasse =
@@ -76,38 +78,14 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        <fieldset className="space-y-3">
-          <legend className="mb-2 text-sm font-medium text-white/80">Você é qual barbeiro?</legend>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {barbeiros.map((barbeiro) => (
-              <button
-                key={barbeiro.id}
-                type="button"
-                aria-pressed={barbeiroId === barbeiro.id}
-                onClick={() => setBarbeiroId(barbeiro.id)}
-                className={`rounded-xl border px-3 py-3 text-sm font-medium transition duration-200 active:scale-[0.98] ${
-                  barbeiroId === barbeiro.id
-                    ? 'border-gold bg-gold text-ink'
-                    : 'border-ink-line bg-ink text-white/80 hover:border-white/30'
-                }`}
-              >
-                {barbeiro.nome}
-              </button>
-            ))}
-          </div>
-          {status !== 'carregando' && barbeiros.length === 0 && (
-            <p className="text-sm text-red-400">Não foi possível carregar os barbeiros.</p>
-          )}
-        </fieldset>
-
         {erro && (
           <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {erro}
           </p>
         )}
 
-        <button type="submit" className="btn-gold w-full">
-          Entrar
+        <button type="submit" disabled={enviando} className="btn-gold w-full">
+          {enviando ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
     </div>

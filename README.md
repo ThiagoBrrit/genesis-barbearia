@@ -38,3 +38,17 @@ A fila mostra apenas os clientes do dia (fuso de São Paulo). No dia seguinte a 
 ## Banco de dados
 
 As tabelas, funções e regras estão na migração `create_barbershop_queue` aplicada no Supabase: tabela `barbeiros`, tabela `fila` e as funções `entrar_na_fila` e `concluir_cliente`.
+
+## Publicar na Cloudflare (grátis)
+
+1. Envie o projeto para o GitHub e conecte o repositório na Cloudflare (Workers & Pages).
+2. Build command: `npm run build` — Deploy command: `npx wrangler deploy` (usa o arquivo `wrangler.jsonc`).
+3. Adicione as variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas configurações do projeto.
+
+## Logins dos barbeiros e abrir/fechar fila
+
+- Os logins ficam no banco (Supabase), com senha criptografada. Inicial: `barbeiro1`/`barbeiro1`, `barbeiro2`/`barbeiro2`, `barbeiro3`/`barbeiro3`.
+- Rode UMA vez no SQL Editor do Supabase o arquivo `supabase/migrations/20261127120000_acesso_barbeiros_fila_aberta.sql`.
+- Para trocar uma senha: `UPDATE barbeiros_acesso SET senha_hash = extensions.crypt('NOVA_SENHA', extensions.gen_salt('bf')) WHERE usuario = 'barbeiro1';`
+- Para trocar o nome mostrado ao cliente: `UPDATE barbeiros SET nome = 'João' WHERE id = 1;`
+- Cada barbeiro abre/fecha a própria fila no painel. A fila aberta vale só no dia; à meia-noite volta a ficar fechada.

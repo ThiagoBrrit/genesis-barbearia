@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { type Barbeiro, type ClienteFila, clientesDo } from '@/lib/queue';
+import { type Barbeiro, type ClienteFila, clientesDo, filaAberta } from '@/lib/queue';
 import { ordinal } from '@/lib/format';
 
 interface BarberCardProps {
@@ -12,6 +12,7 @@ const MAX_NOMES_VISIVEIS = 3;
 
 export default function BarberCard({ barbeiro, clientes, menorFila }: BarberCardProps) {
   const fila = clientesDo(clientes, barbeiro.id);
+  const aberta = filaAberta(barbeiro);
   const visiveis = fila.slice(0, MAX_NOMES_VISIVEIS);
   const restantes = fila.length - visiveis.length;
 
@@ -19,7 +20,12 @@ export default function BarberCard({ barbeiro, clientes, menorFila }: BarberCard
     <article className="flex flex-col rounded-2xl border border-ink-line bg-ink-soft p-6 transition duration-300 hover:-translate-y-1 hover:border-gold/50 hover:shadow-[0_20px_40px_-20px_rgba(212,175,55,0.35)]">
       <div className="flex items-start justify-between gap-3">
         <h2 className="font-display text-2xl text-white">{barbeiro.nome}</h2>
-        {menorFila && (
+        {!aberta && (
+          <span className="shrink-0 rounded-full border border-ink-line px-3 py-1 text-xs font-semibold text-white/50">
+            Fila fechada
+          </span>
+        )}
+        {aberta && menorFila && (
           <span className="shrink-0 rounded-full bg-gold px-3 py-1 text-xs font-semibold text-ink">
             Menor fila
           </span>
@@ -34,7 +40,7 @@ export default function BarberCard({ barbeiro, clientes, menorFila }: BarberCard
       </div>
 
       <ul className="mt-6 flex-1 space-y-2 border-t border-ink-line pt-5">
-        {fila.length === 0 && <li className="text-sm text-white/40">Fila vazia no momento</li>}
+        {fila.length === 0 && <li className="text-sm text-white/40">{aberta ? 'Fila vazia no momento' : 'Fila fechada no momento'}</li>}
         {visiveis.map((cliente) => (
           <li key={cliente.id} className="flex items-center gap-3 text-sm">
             <span className="w-8 shrink-0 font-semibold text-gold/80">{ordinal(cliente.posicao)}</span>

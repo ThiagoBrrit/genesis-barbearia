@@ -4,34 +4,57 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut } from 'lucide-react';
 import { useFila } from '@/hooks/useFila';
 import SwipeQueueItem from '@/components/SwipeQueueItem';
-import { clientesDo, concluirCliente } from '@/lib/queue';
-import { limparSessao, lerSessao } from '@/lib/sessaoBarbeiro';
+import { clientesDo, concluirCliente, definirFilaAberta, ErroSessaoExpirada, filaAberta } from '@/lib/queue';
+import { limparSessao, lerSessao, type SessaoBarbeiro } from '@/lib/sessaoBarbeiro';
 
 export default function BarberPanelPage() {
   const navigate = useNavigate();
-  const [barbeiroId] = useState<number | null>(lerSessao);
+  const [sessao] = useState<SessaoBarbeiro | null>(lerSessao);
   const { barbeiros, clientes, status, atualizar, removerLocalmente } = useFila();
   const [erro, setErro] = useState<string | null>(null);
+  const [alterando, setAlterando] = useState(false);
 
-  if (barbeiroId === null) return <Navigate to="/admin" replace />;
+  if (sessao === null) return <Navigate to="/admin" replace />;
 
-  const barbeiro = barbeiros.find((b) => b.id === barbeiroId);
-  const fila = clientesDo(clientes, barbeiroId);
+  const barbeiro = barbeiros.find((b) => b.id === sessao.barbeiroId);
+  const fila = clientesDo(clientes, sessao.barbeiroId);
+  const aberta = barbeiro ? filaAberta(barbeiro) : false;
+
+  const sair = () => {
+    limparSessao();
+    navigate('/admin', { replace: true });
+  };
+
+  const tratarErro = (e: unknown, mensagemPadrao: string) => {
+    if (e instanceof ErroSessaoExpirada) {
+      sair();
+      return;
+    }
+    setErro(e instanceof Error ? e.message : mensagemPadrao);
+  };
 
   const concluir = async (id: string) => {
     setErro(null);
     removerLocalmente(id);
     try {
-      await concluirCliente(id);
-    } catch {
-      setErro('Não foi possível concluir este cliente. Tente novamente.');
+      await concluirCliente(id, sessao.token);
+    } catch (e) {
+      tratarErro(e, 'Não foi possível concluir este cliente. Tente novamente.');
     }
     await atualizar();
   };
 
-  const sair = () => {
-    limparSessao();
-    navigate('/admin', { replace: true });
+  const alternarFila = async () => {
+    setErro(null);
+    setAlterando(true);
+    try {
+      await definirFilaAberta(sessao.token, !aberta);
+      await atualizar();
+    } catch (e) {
+      tratarErro(e, 'Não foi possível alterar a fila. Tente novamente.');
+    } finally {
+      setAlterando(false);
+    }
   };
 
   return (
@@ -51,6 +74,35 @@ export default function BarberPanelPage() {
         >
           <LogOut size={16} />
           Sair
+        </button>
+      </section>
+
+      <section
+        className={`flex flex-col gap-4 rounded-2xl border px-5 py-5 sm:flex-row sm:items-center sm:justify-between ${
+          aberta ? 'border-emerald-400/30 bg-emerald-400/5' : 'border-ink-line bg-ink-soft'
+        }`}
+      >
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold text-white">
+            <span
+              aria-hidden="true"
+              className={`h-2.5 w-2.5 rounded-full ${aberta ? 'bg-emerald-400' : 'bg-white/30'}`}
+            />
+            {aberta ? 'Sua fila está aberta' : 'Sua fila está fechada'}
+          </p>
+          <p className="mt-1 text-sm text-white/50">
+            {aberta
+              ? 'Os clientes já podem entrar na sua fila. Fechar não remove quem já está esperando.'
+              : 'Os clientes não conseguem entrar na sua fila. Ela fecha sozinha à meia-noite.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={alternarFila}
+          disabled={alterando || !barbeiro}
+          className={aberta ? 'btn-outline shrink-0' : 'btn-gold shrink-0'}
+        >
+          {alterando ? 'Salvando...' : aberta ? 'Fechar fila' : 'Abrir fila'}
         </button>
       </section>
 

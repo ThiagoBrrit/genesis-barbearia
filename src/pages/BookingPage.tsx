@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { useFila } from '@/hooks/useFila';
-import { barbeiroComMenorFila, clientesDo, entrarNaFila } from '@/lib/queue';
+import { barbeiroComMenorFila, clientesDo, entrarNaFila, filaAberta } from '@/lib/queue';
 import { textoPessoasNaFila } from '@/lib/format';
 import { HAIRCUT_PRICE } from '@/config';
 
@@ -17,6 +17,7 @@ export default function BookingPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const menorFilaId = barbeiroComMenorFila(barbeiros, clientes);
+  const algumaAberta = barbeiros.some((b) => filaAberta(b));
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -33,6 +34,10 @@ export default function BookingPage() {
     }
     if (!barbeiro) {
       setErro('Escolha um barbeiro para entrar na fila.');
+      return;
+    }
+    if (!filaAberta(barbeiro)) {
+      setErro('Essa fila está fechada no momento. Escolha outro barbeiro.');
       return;
     }
 
@@ -67,7 +72,7 @@ export default function BookingPage() {
 
       <div className="flex items-center justify-between gap-4 rounded-2xl border border-gold/30 bg-gold/10 px-5 py-4 shadow-[0_12px_30px_-20px_rgba(212,175,55,0.6)]">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Valor do corte</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gold">Valores a partir de</p>
           <p className="mt-1 text-sm text-white/60">Pagamento no local</p>
         </div>
         <p className="font-display text-2xl text-gold">{HAIRCUT_PRICE}</p>
@@ -98,24 +103,35 @@ export default function BookingPage() {
               Não foi possível carregar os barbeiros. Tente novamente em instantes.
             </p>
           )}
+          {status !== 'carregando' && barbeiros.length > 0 && !algumaAberta && (
+            <p className="rounded-xl border border-ink-line bg-ink-soft px-4 py-3 text-sm text-white/60">
+              Nenhuma fila está aberta agora. Volte quando a barbearia abrir.
+            </p>
+          )}
           {barbeiros.map((barbeiro) => {
             const selecionado = barbeiroId === barbeiro.id;
             const total = clientesDo(clientes, barbeiro.id).length;
+            const aberta = filaAberta(barbeiro);
             return (
               <button
                 key={barbeiro.id}
                 type="button"
                 aria-pressed={selecionado}
-                onClick={() => setBarbeiroId(barbeiro.id)}
+                disabled={!aberta}
+                onClick={() => aberta && setBarbeiroId(barbeiro.id)}
                 className={`flex w-full items-center justify-between gap-4 rounded-xl border px-5 py-4 text-left transition duration-200 active:scale-[0.99] ${
-                  selecionado
-                    ? 'border-gold bg-gold/10 shadow-[0_0_0_1px_rgba(212,175,55,0.4)]'
-                    : 'border-ink-line bg-ink-soft hover:border-white/30'
+                  !aberta
+                    ? 'cursor-not-allowed border-ink-line bg-ink-soft opacity-50'
+                    : selecionado
+                      ? 'border-gold bg-gold/10 shadow-[0_0_0_1px_rgba(212,175,55,0.4)]'
+                      : 'border-ink-line bg-ink-soft hover:border-white/30'
                 }`}
               >
                 <div>
                   <p className="font-medium text-white">{barbeiro.nome}</p>
-                  <p className="mt-1 text-sm text-white/50">{textoPessoasNaFila(total)}</p>
+                  <p className="mt-1 text-sm text-white/50">
+                    {aberta ? textoPessoasNaFila(total) : 'Fila fechada no momento'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {barbeiro.id === menorFilaId && !selecionado && (
@@ -144,7 +160,7 @@ export default function BookingPage() {
 
         <button
           type="submit"
-          disabled={enviando || barbeiros.length === 0}
+          disabled={enviando || !algumaAberta}
           className="btn-gold w-full"
         >
           {enviando ? 'Confirmando...' : 'Confirmar presença na fila'}

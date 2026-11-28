@@ -36,6 +36,9 @@ export function useFila() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fila' }, () => {
         atualizar();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'barbeiros' }, () => {
+        atualizar();
+      })
       .subscribe();
     const intervalo = window.setInterval(atualizar, POLLING_INTERVAL_MS);
     return () => {
